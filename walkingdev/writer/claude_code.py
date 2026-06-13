@@ -1,23 +1,18 @@
-"""Default ScriptWriter: invoke Claude Code headless (claude -p).
+"""Default ScriptWriter: Claude Code headless (claude -p).
 
-Covered by a Claude Max subscription (no API cost). Claude Code brings web
-search and the connected MCP servers (Gmail, Calendar) into the run. For an
-unattended nightly run, tools must be usable without interactive approval, so a
-permission mode (default: bypassPermissions) is passed through.
-
-The actual subprocess call lives in walkingdev.llm.run_cli (shared with the
-evening-questions and task-extraction call sites).
+Covered by a Claude Max subscription (no API cost). Claude Code brings web search
+and the connected MCP servers (Gmail, Calendar) into the run, so by default it
+fills the mail/agenda segments live. Set writer.claude_code.connectors: false if
+you have no Gmail/Calendar MCP connected.
 """
-from .. import llm
-from .base import ScriptWriter, WriteInput
-from .prompt import build_prompt, clean_script
+from .base import ScriptWriter
 
 
 class ClaudeCodeWriter(ScriptWriter):
     def __init__(self, config):
-        self.config = config
-        self.timeout = int(config.section("writer", "claude_code").get("timeout_s", 600))
+        super().__init__(config)
+        cc = config.section("writer", "claude_code")
+        self.connectors = bool(cc.get("connectors", True))
 
-    def write_script(self, data: WriteInput) -> str:
-        out = llm.run_cli(self.config, build_prompt(data), timeout=self.timeout)
-        return clean_script(out)
+    def _timeout(self) -> int:
+        return int(self.config.section("writer", "claude_code").get("timeout_s", 600))

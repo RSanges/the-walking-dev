@@ -26,6 +26,8 @@ _FETCH_TIMEOUT = 15  # seconds per feed; a hung feed must not stall the nightly
 
 def gather_news(config) -> list[dict]:
     n = config.section("news")
+    if n.get("enabled") is False:
+        return []  # privacy: no outbound RSS fetch (fully-local profile)
     feeds = n.get("feeds", {}) or {}
     window = int(n.get("window_hours", 48))
     per_feed = int(n.get("max_items_per_feed", 4))

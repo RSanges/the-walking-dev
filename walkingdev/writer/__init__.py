@@ -1,4 +1,6 @@
-from .base import ScriptWriter
+from .base import ScriptWriter, WriteInput
+
+__all__ = ["ScriptWriter", "WriteInput", "make_writer"]
 
 
 def make_writer(config) -> ScriptWriter:
@@ -6,7 +8,10 @@ def make_writer(config) -> ScriptWriter:
     if backend == "claude_code":
         from .claude_code import ClaudeCodeWriter
         return ClaudeCodeWriter(config)
+    if backend == "local":
+        from .local import LocalWriter
+        return LocalWriter(config)
     if backend == "api":
         from .api import ApiWriter
         return ApiWriter(config)
-    raise NotImplementedError("writer backend non implemente: " + str(backend))
+    raise NotImplementedError("writer backend not implemented: " + str(backend))

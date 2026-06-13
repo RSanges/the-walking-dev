@@ -25,22 +25,59 @@ Every concern is an interface with a default and swappable backends. Pick them i
 
 | Concern          | Interface          | Default                | Other backends |
 |------------------|--------------------|------------------------|----------------|
-| Chat / Q&A       | `MessagingChannel` | Telegram               | (WhatsApp: planned) |
+| Chat / Q&A       | `MessagingChannel` | Telegram               | CLI (terminal, no network) |
 | Knowledge source | `KnowledgeProvider`| Local store            | Obsidian vault |
 | State storage    | `StateStore`       | SQLite (one file)      | (Supabase: planned) |
-| Script writer    | `ScriptWriter`     | Claude Code (headless) | Anthropic API key |
+| Script writer    | `ScriptWriter`     | Claude Code (headless) | **Local LLM** (Ollama, LM Studio, llama.cpp, vLLM), Anthropic API |
 | Audio hosting    | `AudioHosting`     | Local folder           | FTP/SFTP, OVH, Cloudflare R2, Scaleway, MinIO, S3 |
 | Text-to-speech   | `TTSEngine`        | OmniVoice (local GPU)  | — |
 
 ## Requirements
 
 - **Python 3.12** (managed with [uv](https://docs.astral.sh/uv/), recommended)
-- A **Telegram bot token** (free, via [@BotFather](https://t.me/BotFather))
-- A **script writer**: either the [Claude Code](https://docs.anthropic.com/claude/docs/claude-code)
-  CLI (covered by a Claude Max plan, default) **or** an `ANTHROPIC_API_KEY`
+- A **messaging channel**: a [Telegram bot token](https://t.me/BotFather) (free),
+  or the **CLI channel** for a no-network terminal check-in
+- A **script writer**, one of:
+  - the [Claude Code](https://docs.anthropic.com/claude/docs/claude-code) CLI
+    (default, covered by a Claude Max plan; adds web search + Gmail/Calendar),
+  - a **local LLM** via any OpenAI-compatible server (Ollama, LM Studio,
+    llama.cpp, vLLM) — fully offline,
+  - or an `ANTHROPIC_API_KEY`
 - **For local TTS**: an NVIDIA GPU (validated on an RTX 2070 Super, 8 GB).
   No GPU? You can still develop everything else; only the audio synthesis step
   needs it (or set `tts.omnivoice.device: cpu`, much slower).
+
+## Privacy / fully-local mode
+
+Every component can run on your machine. For a setup where **nothing leaves your
+computer**, in `config.yaml`:
+
+```yaml
+channel:   { backend: cli }          # terminal check-in, no Telegram
+knowledge: { backend: local }        # or obsidian (your local vault)
+state:     { backend: sqlite }       # one local file
+writer:
+  backend: local                     # local LLM, no cloud
+  local: { base_url: "http://localhost:11434/v1", model: "llama3.1" }
+hosting:   { backend: local }        # files on disk; serve with a local server/tunnel
+tts:       { backend: omnivoice }    # local GPU voice
+news:      { enabled: false }        # skip the web RSS fetch entirely
+```
+
+With this profile there is **zero outbound traffic**. If you keep `news.enabled:
+true`, the only network calls are read-only fetches of the public RSS feeds you
+list (they carry nothing personal). The local writer has no mail/calendar
+connectors, so those segments are simply skipped.
+
+Run it with:
+
+```bash
+# 1. start your local model server, e.g.:
+ollama serve & ollama pull llama3.1
+# 2. onboard / nightly / evening check-in, all local:
+uv run walkingdev bot        # onboarding (first run), then evening check-in
+uv run walkingdev nightly    # generate today's episode
+```
 
 ## Quick start
 

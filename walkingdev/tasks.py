@@ -21,7 +21,7 @@ def extract_tasks(config, script: str) -> list[str]:
         "chaines, rien d'autre.\n\n=== SCRIPT ===\n" + (script or "")
     )
     try:
-        arr = llm.parse_json_array(llm.run_cli(config, prompt, timeout=180))
+        arr = llm.parse_json_array(llm.ask(config, prompt, timeout=180))
         tasks = [str(x).strip() for x in arr if str(x).strip()]
         return tasks[:n]
     except Exception:

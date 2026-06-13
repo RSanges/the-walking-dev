@@ -76,3 +76,15 @@ def test_unreachable_feed_is_skipped(monkeypatch):
     items = news.gather_news(_cfg({"T": ["u1"]}))
     assert items == []
     assert news.format_for_prompt([]).startswith("(aucune")
+
+
+def test_news_disabled_makes_no_fetch(monkeypatch):
+    called = {"n": 0}
+
+    def spy(url, t):
+        called["n"] += 1
+        return _feed(_entry("x", NOW - 60))
+    monkeypatch.setattr(news, "_parse_feed", spy)
+    cfg = Config({"news": {"enabled": False, "feeds": {"T": ["u1"]}}}, ".")
+    assert news.gather_news(cfg) == []
+    assert called["n"] == 0  # privacy: no outbound fetch at all

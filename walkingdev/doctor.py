@@ -37,7 +37,12 @@ def check(config_path: str = "config.yaml") -> int:
         if writer == "claude_code":
             command = cfg.get("writer", "claude_code", "command", default="claude")
             line(f"writer '{command}' on PATH", shutil.which(command) is not None,
-                 "install Claude Code, or set writer.backend: api")
+                 "install Claude Code, or set writer.backend: local/api")
+        elif writer == "local":
+            base = cfg.get("writer", "local", "base_url",
+                           default="http://localhost:11434/v1")
+            line(f"local LLM reachable ({base})", _reachable(base),
+                 "start your local server (e.g. `ollama serve`) or fix writer.local.base_url")
         else:
             line("ANTHROPIC_API_KEY set", bool(os.environ.get("ANTHROPIC_API_KEY")),
                  "writer.backend is 'api' but no key in .env")
@@ -65,6 +70,20 @@ def check(config_path: str = "config.yaml") -> int:
 
     print("\nDoctor:", "all green" if ok else "some items need attention")
     return 0 if ok else 1
+
+
+def _reachable(base_url: str, timeout: float = 2.0) -> bool:
+    """Best-effort TCP connect to a local LLM server's host:port."""
+    import socket
+    from urllib.parse import urlparse
+    u = urlparse(base_url)
+    host = u.hostname or "localhost"
+    port = u.port or (443 if u.scheme == "https" else 80)
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return True
+    except OSError:
+        return False
 
 
 def _check_gpu(cfg, line):

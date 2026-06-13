@@ -30,7 +30,7 @@ def generate(config, day: str) -> list[Question]:
         recent = _recent_evenings(state)
         tasks = state.get_tasks(day)
         prompt = _prompt(brief, recent, day, count, tasks)
-        texts = llm.parse_json_array(llm.run_cli(config, prompt))
+        texts = llm.parse_json_array(llm.ask(config, prompt))
         dynamic = [Question(f"q{i}", str(t), kind="text")
                    for i, t in enumerate(texts[:count]) if str(t).strip()]
         if dynamic:

@@ -33,8 +33,11 @@ schedule:
   evening_questions_at: "21:30"   # the bot asks the daily follow-up questions at this local time
 
 # --- Adapters (sensible defaults; each is swappable) ---
+# For a 100%-LOCAL / max-privacy setup, use: channel=cli, knowledge=local (or
+# obsidian), state=sqlite, writer=local, hosting=local, tts=omnivoice, and set
+# news.enabled=false. Then nothing leaves your machine.
 channel:
-  backend: telegram               # telegram | (whatsapp: planned)
+  backend: telegram               # telegram | cli (terminal, no network)
 
 knowledge:
   backend: local                  # local | obsidian
@@ -55,13 +58,25 @@ state:
     path: "data/walkingdev.db"
 
 writer:
-  backend: claude_code            # claude_code (Claude Code CLI, covered by a Max plan) | api
+  backend: claude_code            # claude_code | local | api
   claude_code:
     command: "claude"             # the CLI to invoke headless: claude -p
     permission_mode: bypassPermissions   # tools usable unattended; "" to disable
     timeout_s: 600
+    connectors: true              # has Gmail/Calendar MCP -> fill mail/agenda live
+  # Fully-local LLM via any OpenAI-compatible server (nothing leaves the machine).
+  # No mail/calendar connectors -> those segments are skipped.
+  local:
+    base_url: "http://localhost:11434/v1"   # Ollama; LM Studio: http://localhost:1234/v1
+    model: "llama3.1"             # any local model you have pulled
+    temperature: 0.7
+    max_tokens: 4000
+    timeout_s: 600
+    # api_key: ""                 # only if your local server requires one (else LOCAL_LLM_API_KEY)
   api:
     model: "claude-opus-4-8"      # used when backend = api (needs ANTHROPIC_API_KEY)
+    max_tokens: 4000
+    timeout_s: 600
 
 hosting:
   backend: local                  # local | ftp | ovh | r2 | s3 | scaleway | minio
@@ -112,6 +127,7 @@ tts:
     # ref_text: "Exact transcription of the reference clip."   # or a voices/narrator.txt sidecar
 
 news:
+  enabled: true                  # set false for a fully-local profile (no RSS fetch)
   window_hours: 48
   max_items_per_feed: 4
   max_per_theme: 3

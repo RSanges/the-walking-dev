@@ -19,7 +19,14 @@ DEFAULT_DOMAINS = [
 ]
 
 
-def build_prompt(data) -> str:
+def build_prompt(data, connectors: bool = False) -> str:
+    """Build the spoken-script prompt.
+
+    ``connectors`` tells the prompt whether the writer can call live Gmail /
+    Calendar tools (the Claude Code backend with MCP connectors). When False
+    (local LLM, plain API), the mail/agenda segments are skipped rather than
+    asking the model to call tools it does not have.
+    """
     p = data.profile or {}
     tone = p.get("tone", "direct et cash")   # narration style, from podcast.tone
     themes = p.get("themes", "")
@@ -39,9 +46,14 @@ def build_prompt(data) -> str:
          " jamais un autre nom.") if name else "Tu t'adresses directement a l'auditeur.",
         "DATE DU JOUR: " + today + " (format AAAA-MM-JJ). C'est aujourd'hui.",
         "",
-        "Ordre des segments OBLIGATOIRE: intro courte, veille d'actualites,",
-        "avancement projets/objectifs, DEFI DU JOUR (reflexion), resume des mails",
-        "utiles, agenda du jour, puis une cloture qui met en mouvement.",
+        ("Ordre des segments OBLIGATOIRE: intro courte, veille d'actualites,"
+         " avancement projets/objectifs, DEFI DU JOUR (reflexion), resume des"
+         " mails utiles, agenda du jour, puis une cloture qui met en mouvement."
+         if connectors else
+         "Ordre des segments OBLIGATOIRE: intro courte, veille d'actualites,"
+         " avancement projets/objectifs, DEFI DU JOUR (reflexion), puis une"
+         " cloture qui met en mouvement. (Pas de segment mails ni agenda dans"
+         " ce mode.)"),
         "",
         "=== VEILLE D'ACTUALITES ===",
         "THEMES: " + str(themes),
@@ -63,15 +75,22 @@ def build_prompt(data) -> str:
         "- Rattache a la situation de l'auditeur (projets, objectifs) quand c'est",
         "  pertinent, sans plaquer artificiellement.",
         "",
-        "=== MAILS ET AGENDA (tu as des connecteurs Gmail et Google Agenda) ===",
-        "- Tu DOIS appeler l'outil Gmail pour chercher les mails non lus des 24h du",
-        "  compte " + str(_mail(data)) + " (hors promotions et newsletters) AVANT",
-        "  d'ecrire le segment mails. Resume les utiles; s'il n'y en a pas, dis-le.",
-        "- Tu DOIS appeler l'outil Google Agenda pour lister les evenements",
-        "  d'aujourd'hui (" + today + ") AVANT d'ecrire le segment agenda.",
-        "- N'affirme jamais 'pas de donnees' ou 'rien recu' sans avoir reellement",
-        "  appele l'outil correspondant. N'invente aucun mail ni evenement.",
-        "",
+        *(([
+            "=== MAILS ET AGENDA (tu as des connecteurs Gmail et Google Agenda) ===",
+            "- Tu DOIS appeler l'outil Gmail pour chercher les mails non lus des 24h du",
+            "  compte " + str(_mail(data)) + " (hors promotions et newsletters) AVANT",
+            "  d'ecrire le segment mails. Resume les utiles; s'il n'y en a pas, dis-le.",
+            "- Tu DOIS appeler l'outil Google Agenda pour lister les evenements",
+            "  d'aujourd'hui (" + today + ") AVANT d'ecrire le segment agenda.",
+            "- N'affirme jamais 'pas de donnees' ou 'rien recu' sans avoir reellement",
+            "  appele l'outil correspondant. N'invente aucun mail ni evenement.",
+            "",
+        ]) if connectors else ([
+            "=== MAILS ET AGENDA ===",
+            "Tu n'as PAS d'acces aux mails ni a l'agenda dans ce mode. N'invente",
+            "aucun mail ni evenement: saute simplement ces deux segments.",
+            "",
+        ])),
         "=== PROJETS ET OBJECTIFS (source vault/local) ===",
         "Incite a l'action UNIQUEMENT pour les projets en statut 'actif'. Tout",
         "autre statut (production, termine, gele, en pause, planifie, archive,",

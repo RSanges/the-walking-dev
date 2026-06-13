@@ -3,8 +3,9 @@ from walkingdev.writer.base import WriteInput
 from walkingdev.writer.prompt import DEFAULT_DOMAINS, build_prompt, clean_script
 
 
-def _build(profile, date="2026-06-13"):
-    return build_prompt(WriteInput(profile=profile, evening={}, brief=Brief(), date=date))
+def _build(profile, date="2026-06-13", connectors=False):
+    return build_prompt(WriteInput(profile=profile, evening={}, brief=Brief(), date=date),
+                        connectors=connectors)
 
 
 def test_default_prompt_has_no_personal_data():
@@ -22,9 +23,21 @@ def test_challenge_domains_and_context_injected():
 
 
 def test_mail_account_none_does_not_render_none():
-    p = _build({"name": "Alex", "mail_account": None})
+    p = _build({"name": "Alex", "mail_account": None}, connectors=True)
     assert "compte None" not in p
     assert "le compte configure" in p
+
+
+def test_connectors_false_skips_mail_and_agenda():
+    p = _build({"name": "Alex"}, connectors=False)
+    assert "connecteurs Gmail" not in p
+    assert "Pas de segment mails ni agenda" in p
+
+
+def test_connectors_true_includes_mail_and_agenda():
+    p = _build({"name": "Alex", "mail_account": "me@example.com"}, connectors=True)
+    assert "outil Gmail" in p
+    assert "me@example.com" in p
 
 
 def test_addresses_user_by_name():
