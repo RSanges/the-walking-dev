@@ -2,10 +2,15 @@
 
 Uses OmniVoice in DESIGN mode (a generic voice from the instruct vocabulary, no
 cloning), on fixed generic English text, so the clip exposes nothing personal.
-Output: demo/sample.mp3. Requires the GPU TTS stack (scripts/install_omnivoice.ps1).
+Outputs demo/sample.mp3 and, if ffmpeg + a cover image are available, a
+demo/sample.mp4 (cover still + audio) you can drag into a GitHub issue to get an
+inline player URL (GitHub embeds video, not audio). Requires the GPU TTS stack
+(scripts/install_omnivoice.ps1).
 
     uv run python scripts/make_demo.py
 """
+import shutil
+import subprocess
 from pathlib import Path
 
 from walkingdev.audio_encode import wav_to_mp3
@@ -34,3 +39,16 @@ make_tts(cfg).synthesize(TEXT, wav)
 mp3 = str(DEMO / "sample.mp3")
 wav_to_mp3(wav, mp3, bitrate=128)
 print("wrote", mp3)
+
+# Optional: a small MP4 (cover still + audio) for an inline player on GitHub.
+cover = ROOT / "cover.jpg"
+if shutil.which("ffmpeg") and cover.exists():
+    mp4 = str(DEMO / "sample.mp4")
+    subprocess.run(
+        ["ffmpeg", "-y", "-loop", "1", "-i", str(cover), "-i", mp3,
+         "-c:v", "libx264", "-tune", "stillimage", "-vf", "scale=720:720",
+         "-c:a", "aac", "-b:a", "128k", "-pix_fmt", "yuv420p", "-shortest", mp4],
+        check=True, capture_output=True)
+    print("wrote", mp4)
+else:
+    print("(ffmpeg or cover.jpg missing -> skipped mp4)")
