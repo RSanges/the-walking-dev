@@ -18,6 +18,26 @@ Morning            your podcast app fetches the new episode via RSS
 Audio order: intro, news, projects/objectives, challenge of the day, mail,
 agenda (last), outro.
 
+## What it sounds like
+
+A brief is a single spoken track. Here's a generic excerpt of the kind of script
+it produces (your real one is built from your own news, projects and answers):
+
+> Good morning. It's seven o'clock, here's your brief for the day. Let's get moving.
+>
+> On the news front: a new open-weights model dropped this week, and it matters for
+> anyone keeping their stack on their own machine, it closes a lot of the gap with the
+> hosted options. Worth thirty minutes this weekend to try it on something real.
+>
+> On your projects: the API refactor is the one marked active, so that's today, ship the
+> auth endpoint before you touch anything else. The dashboard is still on hold, leave it there.
+>
+> Challenge of the day, on focus: you started three things this week and finished none.
+> Which one would actually move the needle if it were done by Friday, and what are you
+> avoiding by staying busy?
+>
+> That's it. One thing at a time. Enjoy the walk.
+
 ## Adapters
 
 Every concern is an interface with a default and swappable backends. Pick them in
