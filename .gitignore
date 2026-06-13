@@ -20,6 +20,8 @@ audio/*.mp3
 audio/*.wav
 public/
 feed.xml
+# Demo: keep the published mp3, ignore the heavy intermediate wav
+demo/*.wav
 
 # OmniVoice model weights (downloaded, multi-GB)
 models/

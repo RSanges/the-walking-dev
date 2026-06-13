@@ -20,8 +20,9 @@ agenda (last), outro.
 
 ## What it sounds like
 
-A brief is a single spoken track. Here's a generic excerpt of the kind of script
-it produces (your real one is built from your own news, projects and answers):
+A brief is a single spoken track. 🔊 **[Listen to a 10s sample](demo/sample.mp3)**
+(neutral default voice, generic content). Here's a generic excerpt of the kind of
+script it produces (your real one is built from your own news, projects and answers):
 
 > Good morning. It's seven o'clock, here's your brief for the day. Let's get moving.
 >
