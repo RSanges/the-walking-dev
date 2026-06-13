@@ -1,0 +1,156 @@
+# The Walking Dev
+
+A self-hosted, open-source generator for a **daily personal podcast** you listen
+to on your morning walk. Every night it gathers your world (news on your themes,
+project/objective progress, a summary of useful mail, today's calendar), writes a
+spoken script, turns it into audio with a local voice, and publishes a private
+podcast RSS feed. You wake up, hit play, and walk.
+
+Built to be **cloned and run by anyone**: every moving part is a swappable
+adapter, with sensible zero-account defaults.
+
+```
+Evening (~21:30)   a Telegram bot asks you a few short questions  ->  stored locally
+Night              gather -> write script -> synthesize -> publish -> trace
+Morning            your podcast app fetches the new episode via RSS
+```
+
+Audio order: intro, news, projects/objectives, challenge of the day, mail,
+agenda (last), outro.
+
+## Adapters
+
+Every concern is an interface with a default and swappable backends. Pick them in
+`config.yaml`; put secrets in `.env`.
+
+| Concern          | Interface          | Default                | Other backends |
+|------------------|--------------------|------------------------|----------------|
+| Chat / Q&A       | `MessagingChannel` | Telegram               | (WhatsApp: planned) |
+| Knowledge source | `KnowledgeProvider`| Local store            | Obsidian vault |
+| State storage    | `StateStore`       | SQLite (one file)      | (Supabase: planned) |
+| Script writer    | `ScriptWriter`     | Claude Code (headless) | Anthropic API key |
+| Audio hosting    | `AudioHosting`     | Local folder           | FTP/SFTP, OVH, Cloudflare R2, Scaleway, MinIO, S3 |
+| Text-to-speech   | `TTSEngine`        | OmniVoice (local GPU)  | — |
+
+## Requirements
+
+- **Python 3.12** (managed with [uv](https://docs.astral.sh/uv/), recommended)
+- A **Telegram bot token** (free, via [@BotFather](https://t.me/BotFather))
+- A **script writer**: either the [Claude Code](https://docs.anthropic.com/claude/docs/claude-code)
+  CLI (covered by a Claude Max plan, default) **or** an `ANTHROPIC_API_KEY`
+- **For local TTS**: an NVIDIA GPU (validated on an RTX 2070 Super, 8 GB).
+  No GPU? You can still develop everything else; only the audio synthesis step
+  needs it (or set `tts.omnivoice.device: cpu`, much slower).
+
+## Quick start
+
+```bash
+git clone https://github.com/RSanges/the-walking-dev && cd the-walking-dev
+uv sync                                   # Python 3.12 venv + core deps
+
+cp .env.example .env                      # add your Telegram bot token + chat id
+cp config.example.yaml config.yaml        # edit to taste
+
+# Optional extras, install only what your config uses:
+uv pip install -e ".[sftp]"               # FTP/SFTP hosting
+uv pip install -e ".[s3]"                 # OVH / R2 / S3 hosting
+uv pip install -e ".[api]"                # Anthropic API writer (instead of Claude Code)
+
+# Local GPU voice (NVIDIA). Run once, then validate the voice:
+powershell -ExecutionPolicy Bypass -File scripts/install_omnivoice.ps1   # Windows
+uv run python scripts/spike_omnivoice.py
+
+uv run walkingdev doctor                   # check environment & config
+uv run walkingdev bot                      # onboarding + evening questions
+uv run walkingdev nightly                  # generate one episode now
+```
+
+> Run commands from the repo root: paths (`config.yaml`, `.env`, `audio/`,
+> `data/`) resolve relative to the project folder. You can override the root with
+> the `WALKINGDEV_HOME` environment variable.
+
+## Commands
+
+```
+walkingdev bot                  start the messaging bot (onboarding + evening flow)
+walkingdev nightly [--day D]    generate one episode now (used by the scheduler)
+walkingdev doctor               check environment, config and connectors
+```
+
+Common options: `--config PATH`, `--force` (regenerate today's episode), `-v`.
+
+## Scheduling the nightly run
+
+**Windows (Task Scheduler):**
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/schedule_task.ps1 -At 05:30
+powershell -ExecutionPolicy Bypass -File scripts/schedule_bot.ps1   # bot at logon
+```
+
+**Linux/macOS (cron):** add a line with `crontab -e`:
+
+```cron
+30 5 * * *  cd /path/to/the-walking-dev && /path/to/.venv/bin/walkingdev nightly
+```
+
+Run the bot continuously with your process manager of choice (systemd, `tmux`,
+`pm2`, ...): `walkingdev bot`.
+
+## Hosting the feed
+
+- **local** (default): writes `public/episodes/<date>.mp3` + `public/feed.xml`.
+  Serve `public/` with any static server, or expose it with a tunnel
+  (e.g. `cloudflared`).
+- **ftp / sftp**: drop files on classic shared web hosting; a subdomain folder
+  maps to `public_base_url`. Needs `FTP_USER` / `FTP_PASSWORD` in `.env`.
+- **ovh / r2 / s3 / scaleway / minio**: any S3-compatible object storage. Generic
+  `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` in `.env` (R2 also needs
+  `R2_ACCOUNT_ID`).
+
+Add the feed URL (`<public_base_url>/feed.xml`) to your podcast app. Keeping the
+base URL unguessable (a secret folder name) is the simplest way to keep a
+personal feed private.
+
+## How the brief is written
+
+The nightly pipeline ([`walkingdev/pipeline/nightly.py`](walkingdev/pipeline/nightly.py))
+hands the script writer fresh, dated RSS items (no stale training-data news), your
+projects/objectives, last night's answers, yesterday's task follow-through, and
+optionally your whole Obsidian vault as background context. With the default
+Claude Code writer it can also call connected MCP tools (Gmail, Calendar) during
+the run. The personal "challenge of the day" focus areas and any private context
+are configured in `config.yaml` (`podcast.challenge`), so nothing personal lives
+in the source.
+
+## Development
+
+```bash
+uv pip install -e ".[dev]"     # pytest + ruff
+pytest -q                      # offline test suite (no network, no GPU)
+ruff check walkingdev scripts tests
+```
+
+CI (GitHub Actions) runs ruff + pytest on every push and PR. See
+[CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Project layout
+
+```
+walkingdev/
+  channels/    MessagingChannel (Telegram)
+  knowledge/   KnowledgeProvider (local store, Obsidian)
+  state/       StateStore (SQLite)
+  writer/      ScriptWriter (Claude Code, API) + prompt builder
+  tts/         TTSEngine (OmniVoice)
+  hosting/     AudioHosting (local, FTP/SFTP, S3) + RSS feed builder
+  news.py      curated-RSS gathering
+  pipeline/    the nightly orchestration
+scripts/       install, scheduling and one-off helper utilities
+tests/         offline unit tests
+```
+
+## License
+
+[MIT](LICENSE). The "The Walking Dev" name and artwork are a playful nod to a
+well-known series; if you redistribute, consider your own branding.

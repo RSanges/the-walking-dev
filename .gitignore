@@ -1,0 +1,38 @@
+# Python / uv
+.venv/
+__pycache__/
+*.pyc
+.uv/
+
+# Secrets & local config
+.env
+config.yaml
+
+# Dev logs (root + data/)
+*.log
+
+# Local runtime data (sqlite db, logs, scratch) — keep the dir only
+data/*
+!data/.gitkeep
+
+# Generated audio & published web root
+audio/*.mp3
+audio/*.wav
+public/
+feed.xml
+
+# OmniVoice model weights (downloaded, multi-GB)
+models/
+
+# Voice reference audio + transcripts: personal & heavy — only README is tracked
+voices/*.wav
+voices/*.mp3
+voices/*.txt
+!voices/.gitkeep
+
+# Local-only / shelved helper scripts
+scripts/*.local.bak
+
+# OS
+.DS_Store
+Thumbs.db

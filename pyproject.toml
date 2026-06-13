@@ -1,0 +1,68 @@
+[project]
+name = "walkingdev"
+version = "0.1.0"
+description = "The Walking Dev: a self-hosted daily personal podcast you listen to on your morning walk."
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Romain Sanges" }]
+keywords = ["podcast", "rss", "tts", "telegram", "automation", "self-hosted", "claude"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Sound/Audio :: Speech",
+    "Topic :: Communications :: Chat",
+]
+dependencies = [
+    "python-telegram-bot[job-queue]>=21.0",
+    "pyyaml>=6.0",
+    "feedgen>=1.0.0",
+    "feedparser>=6.0",
+    "lameenc>=1.8",
+    "tzdata>=2024.1 ; sys_platform == 'win32'",  # zoneinfo data on Windows
+]
+
+[project.optional-dependencies]
+tts = ["torch", "soundfile", "numpy", "omnivoice"]   # installed via scripts/install_omnivoice.ps1
+api = ["anthropic>=0.39"]                    # fallback ScriptWriter when no Claude Code
+s3 = ["boto3>=1.34"]                          # OVH / R2 / S3 hosting backends
+sftp = ["paramiko>=3.4"]                      # FTP/SFTP hosting backend
+supabase = ["supabase>=2.5"]
+dev = ["pytest>=8.0", "ruff>=0.6"]
+
+[project.urls]
+Homepage = "https://github.com/RSanges/the-walking-dev"
+Repository = "https://github.com/RSanges/the-walking-dev"
+Issues = "https://github.com/RSanges/the-walking-dev/issues"
+
+[project.scripts]
+walkingdev = "walkingdev.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["walkingdev"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = [
+    "E501",   # long lines tolerated (prompt strings, URLs)
+    "UP031",  # %-formatting is fine alongside f-strings here
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Helper/spike scripts deliberately use lazy heavy imports after some setup.
+"scripts/*" = ["E402"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

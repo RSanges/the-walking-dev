@@ -1,0 +1,142 @@
+# === The Walking Dev: configuration ===
+# Copy this file to config.yaml and edit it. Secrets go in .env (see .env.example).
+# Defaults below are the zero-account "clone and run" path: local files + a local
+# knowledge store. Switch any adapter to a richer backend when you want to.
+
+podcast:
+  title: "The Walking Dev"
+  user_name: ""                   # your first name (the narrator addresses you)
+  cover: ""                       # local path to a square cover (1400-3000px); published as <base>/cover.jpg
+  language: fr                    # feed language (the narration language follows your prompt/voice)
+  timezone: "Europe/Paris"        # used for episode pubDate and the evening reminder time
+  author: "The Walking Dev"       # iTunes author shown in podcast apps
+  owner_email: ""                 # iTunes owner email (needed to CLAIM the podcast on a platform); omitted if empty
+  target_minutes: [10, 20]        # informational target length
+  tone: "direct and frank"        # narrator persona, injected into the prompt
+  # Running order of segments (informational; the prompt enforces the order):
+  segments: [intro, news, projects, challenge, mail, agenda, outro]
+  ready_by: "07:00"               # the time episodes are "released" in the feed
+  off_days: []                    # skip generation on these weekdays, e.g. ["sunday"]
+  mp3_bitrate: 128                # MP3 encoding bitrate (kbps)
+  # "Challenge of the day": one rotating focus area per day + optional private context.
+  challenge:
+    domains:
+      - "work, projects and momentum"
+      - "discipline, body and health (sport, routines, sleep)"
+      - "money and finances"
+      - "relationships (close ones, partners, network, clients)"
+      - "life direction, meaning and long-term vision"
+      - "mindset and relationship to work (focus, habits, fears)"
+    context: ""                   # optional: private specifics to make the challenge hit home
+
+schedule:
+  evening_questions_at: "21:30"   # the bot asks the daily follow-up questions at this local time
+
+# --- Adapters (sensible defaults; each is swappable) ---
+channel:
+  backend: telegram               # telegram | (whatsapp: planned)
+
+knowledge:
+  backend: local                  # local | obsidian
+  # When backend is obsidian, read projects/objectives + the whole vault as context:
+  obsidian:
+    vault_path: ""                # absolute path to your Obsidian vault
+    projects_dir: "01 - Projets"
+    objectives_file: "02 - Objectifs/Objectifs.md"
+    about_file: "À propos de moi.md"
+    journal_dir: "05 - Journal"
+    templates_dir: "99 - Templates"   # excluded from the full-vault dump
+    journal_recent: 14                # keep only the N most recent journal entries
+    max_chars: 200000                 # hard ceiling on the whole vault dump
+
+state:
+  backend: sqlite                 # sqlite (1 file) | supabase (planned)
+  sqlite:
+    path: "data/walkingdev.db"
+
+writer:
+  backend: claude_code            # claude_code (Claude Code CLI, covered by a Max plan) | api
+  claude_code:
+    command: "claude"             # the CLI to invoke headless: claude -p
+    permission_mode: bypassPermissions   # tools usable unattended; "" to disable
+    timeout_s: 600
+  api:
+    model: "claude-opus-4-8"      # used when backend = api (needs ANTHROPIC_API_KEY)
+
+hosting:
+  backend: local                  # local | ftp | ovh | r2 | s3 | scaleway | minio
+  # Local folder (default). Serve it with any static server / tunnel.
+  local:
+    output_dir: "public"          # web root: episodes/<date>.mp3 + feed.xml + cover.jpg
+    public_base_url: "http://localhost:8000"
+  # Classic web hosting over FTPS/SFTP (e.g. an OVH mutualise plan). Creds in .env
+  # (FTP_USER / FTP_PASSWORD). A subdomain folder maps to public_base_url.
+  ftp:
+    protocol: ftps               # ftps | sftp
+    host: "ftp.example.com"
+    port: 21                     # 21 ftps | 22 sftp
+    remote_dir: "www/podcast"    # folder served at public_base_url
+    public_base_url: "https://podcast.example.com"
+  # OVHcloud Object Storage (S3-compatible, FR datacenters):
+  ovh:
+    region: "gra"
+    bucket: "walkingdev"
+    public_base_url: "https://walkingdev.s3.gra.io.cloud.ovh.net"
+  # Cloudflare R2 (also set R2_ACCOUNT_ID in .env):
+  r2:
+    public_base_url: "https://podcast.example.com"
+  # Any S3-compatible provider (explicit endpoint):
+  s3:
+    endpoint_url: ""
+    region: "us-east-1"
+    bucket: "walkingdev"
+    public_base_url: ""
+
+tts:
+  backend: omnivoice
+  omnivoice:
+    # Default = voice DESIGN (works out of the box, fixed vocabulary, no French
+    # accent tag; French text is rendered natively). Chosen narrator:
+    instruct: "male, young adult, low pitch"
+    device: "cuda:0"             # "cpu" if you have no NVIDIA GPU (slow)
+    sample_rate: 24000
+    max_chars: 600               # text is chunked to this size before synthesis
+    min_rms: 0.02                # re-roll a take if it comes out silent/garbled
+    max_retries: 3
+    # num_step: 50               # diffusion steps (higher = finer, slower)
+    # speed: 1.0                 # speaking rate
+    # seed: 42                   # fix for reproducible takes
+    # To PIN an exact voice (recommended in production), use CLONING instead:
+    # comment 'instruct' above and provide a reference sample + its transcript:
+    # ref_audio: "voices/narrator.wav"
+    # ref_text: "Exact transcription of the reference clip."   # or a voices/narrator.txt sidecar
+
+news:
+  window_hours: 48
+  max_items_per_feed: 4
+  max_per_theme: 3
+  max_total: 16
+  fetch_timeout: 15              # seconds per feed (a hung feed never stalls the run)
+  exclude_keywords: [people, "célébrité", "télé-réalité", "faits divers", "fait divers", insolite, horoscope, buzz]
+  feeds:
+    "AI / agents / LLM":
+      - "https://simonwillison.net/atom/everything/"
+      - "https://huggingface.co/blog/feed.xml"
+      - "https://www.technologyreview.com/topic/artificial-intelligence/feed/"
+    "Web dev":
+      - "https://www.smashingmagazine.com/feed/"
+      - "https://css-tricks.com/feed/"
+    "3D printing / making":
+      - "https://www.3dnatives.com/feed/"
+      - "https://hackaday.com/blog/feed/"
+
+mail:
+  account: ""                    # the mailbox the writer summarizes (via the Gmail MCP connector)
+  window_hours: 24
+  exclude_categories: [promotions, social, updates]
+
+evening:
+  dynamic_count: 8               # adaptive questions generated each evening (+ 2 fixed anchors: energy, workout)
+
+tasks:
+  count: 5                       # number of daily tasks (tappable Telegram checklist)
