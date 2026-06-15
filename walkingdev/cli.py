@@ -44,6 +44,33 @@ def _setup_logging(verbose: bool = False) -> None:
         root.addHandler(ch)
 
 
+def _alert_nightly_failure(config_path: str, day: str | None, exc: Exception) -> None:
+    """Best-effort heads-up over the messaging channel when the nightly run dies.
+
+    The brief is generated unattended, so a crash would otherwise be silent until
+    someone notices the podcast went quiet. Any failure here is swallowed (logged
+    only): the alert must never mask the original error or change the exit code.
+    """
+    from datetime import date as _date
+    try:
+        import asyncio
+
+        from .channels import make_channel
+        from .config import Config
+        cfg = Config.load(config_path)
+        when = day or _date.today().isoformat()
+        text = (
+            "⚠️ The Walking Dev : la generation du brief a echoue (%s).\n"
+            "%s: %s\n\n"
+            "Aucun nouvel episode ne sera publie. Le planificateur reessaiera "
+            "demain matin." % (when, type(exc).__name__, str(exc)[:600])
+        )
+        asyncio.run(make_channel(cfg).send(text))
+    except Exception:
+        logging.getLogger("walkingdev.cli").warning(
+            "could not send nightly failure alert", exc_info=True)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="walkingdev", description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -63,7 +90,12 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "nightly":
         from .pipeline.nightly import run
-        run(config_path=args.config, day=args.day, force=args.force)
+        try:
+            run(config_path=args.config, day=args.day, force=args.force)
+        except Exception as exc:
+            logging.getLogger("walkingdev.cli").exception("nightly run failed")
+            _alert_nightly_failure(args.config, args.day, exc)
+            raise  # keep a non-zero exit so the scheduler records the failure
         return 0
     if args.command == "bot":
         from .channels import make_channel

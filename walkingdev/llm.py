@@ -64,7 +64,12 @@ def _complete_claude_cli(config, prompt: str, timeout: int) -> str:
             "writer.claude_code.command, or switch writer.backend to 'local'/'api'."
         ) from e
     if proc.returncode != 0:
-        raise RuntimeError("claude -p failed: " + (proc.stderr or "")[:500])
+        # The Claude CLI prints some failures (e.g. "401 Invalid authentication
+        # credentials") to stdout, not stderr. Fall back to stdout so the reason
+        # actually surfaces in logs and alerts instead of an empty message.
+        detail = (proc.stderr or "").strip() or (proc.stdout or "").strip()
+        raise RuntimeError(
+            f"claude -p failed (exit {proc.returncode}): {detail[:500]}")
     return proc.stdout
 
 
